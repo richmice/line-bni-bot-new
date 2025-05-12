@@ -18,11 +18,11 @@ export default async function handler(req, res) {
       const replyToken = event.replyToken;
 
       try {
-        // 1. 連接 Google Sheets
+        // 連接 Google Sheets
         const sheets = google.sheets('v4');
         const auth = new google.auth.GoogleAuth({
           credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
         });
         const client = await auth.getClient();
         const spreadsheetId = '1Zp4glUPoVUkyGkHNY0uVPu05UMxsurFXaiay9L8cFoI';
@@ -30,40 +30,23 @@ export default async function handler(req, res) {
         const getRes = await sheets.spreadsheets.values.get({
           auth: client,
           spreadsheetId,
-          range: '工作表1!A2:I1000', // 讀取第2列起的內容
+          range: '工作表1!A2:I1000', // A~I，從第2列開始
         });
 
         const rows = getRes.data.values || [];
         const messages = [];
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
+        for (const row of rows) {
           const [name, status, times, date, note, notified] = row;
 
           if (notified !== '✅') {
-            // 準備訊息
             const text = `🙋 ${name}｜${status}｜${date}｜${note || ''}`;
             messages.push({ type: 'text', text });
-
-            // 寫入通知資料
-            const rowIndex = i + 2; // 加2因為從 A2 開始讀
-            const now = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-
-            await sheets.spreadsheets.values.update({
-              auth: client,
-              spreadsheetId,
-              range: `工作表1!G${rowIndex}:I${rowIndex}`,
-              valueInputOption: 'RAW',
-              requestBody: {
-                values: [['✅', '系統', now]],
-              },
-            });
           }
         }
 
-        // 發送訊息
         if (messages.length === 0) {
-          messages.push({ type: 'text', text: '✅ 目前沒有人需要通知！' });
+          messages.push({ type: 'text', text: '✅ 目前沒有尚未通知的人員。' });
         }
 
         await axios.post(
@@ -82,7 +65,7 @@ export default async function handler(req, res) {
 
         return res.status(200).end();
       } catch (error) {
-        console.error('處理出缺席通知失敗：', error.message);
+        console.error('LINE Bot 發送錯誤：', error);
         return res.status(500).json({ error: '通知失敗' });
       }
     }

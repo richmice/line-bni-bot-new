@@ -1,49 +1,51 @@
-const { google } = require('googleapis');
+// attendance.js
+import { google } from 'googleapis';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const body = req.body.data;
+    if (!Array.isArray(body) || body.length < 4) {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+
     const sheets = google.sheets('v4');
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const client = await auth.getClient();
-    const spreadsheetId = '1Zp4glUPoVUkyGkHNY0uVPu05UMxsurFXaiay9L8cFoI';
+    const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    if (req.method === 'POST') {
-      const { data } = req.body;
-      if (!Array.isArray(data) || data.length !== 8) {
-        return res.status(400).json({ status: 'error', message: 'Invalid data format' });
-      }
+    const today = new Date();
+    const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const taiwanDate = today.toLocaleDateString('sv-SE', options); // e.g. 2025-05-12
 
-      const now = new Date();
-      const formattedTime = now.toLocaleString('zh-TW', { hour12: false });
-      const email = req.headers['x-vercel-user-email'] || '未知';
+    const row = [
+      body[0],        // 姓名
+      body[1],        // 狀態類型（缺席/遲到/代理人）
+      body[2],        // 次數
+      body[3] || taiwanDate, // 日期，預設為今天
+      body[4] || '',  // 草稿訊息
+      '',             // ✅ 已通知（手動打勾）
+      '',             // 🙋 誰通知（自動）
+      '',             // 🕐 通知時間（自動）
+    ];
 
-      const values = [[
-        data[0],
-        data[1],
-        data[2],
-        data[3],
-        data[4],
-        '✅',
-        email,
-        formattedTime,
-      ]];
+    await sheets.spreadsheets.values.append({
+      auth: client,
+      spreadsheetId,
+      range: '工作表1!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] },
+    });
 
-      await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: '工作表1!A2',
-        valueInputOption: 'USER_ENTERED',
-        resource: { values },
-        auth: client,
-      });
-
-      res.status(200).json({ status: 'success' });
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
-    }
+    return res.status(200).json({ status: 'ok', inserted: row });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('✖️ Google Sheets Append Error:', error);
+    return res.status(500).json({ error: 'Internal error', detail: error.message });
   }
-};
+}

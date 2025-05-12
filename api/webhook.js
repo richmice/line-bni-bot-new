@@ -1,18 +1,45 @@
-const express = require('express');
-const axios = require('axios');
+import axios from 'axios';
 
-const app = express();
-app.use(express.json());
-
-app.post('/api/webhook', async (req, res) => {
-  try {
-    // 處理來自 LINE 的 webhook 請求
-    console.log('Received webhook:', req.body);
-    res.status(200).send('OK');
-  } catch (error) {
-    console.error('Error handling webhook:', error);
-    res.status(500).send('Internal Server Error');
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    console.warn('[！] Received non-POST request');
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-});
 
-module.exports = app;
+  const events = req.body.events;
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
+  if (!token) {
+    console.error('[！] Missing LINE access token');
+    return res.status(500).json({ error: 'Missing LINE access token' });
+  }
+
+  for (const event of events) {
+    if (
+      event.type === 'message' &&
+      event.message.type === 'text' &&
+      event.message.text === '/ping'
+    ) {
+      await axios.post(
+        'https://api.line.me/v2/bot/message/reply',
+        {
+          replyToken: event.replyToken,
+          messages: [
+            {
+              type: 'text',
+              text: 'pong 🏓',
+            },
+          ],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    }
+  }
+
+  res.status(200).end();
+}

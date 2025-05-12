@@ -15,34 +15,35 @@ export default async function handler(req, res) {
   }
 
   for (const event of events) {
+    // ✅ 忽略不是 user 的來源（例如 group、room 或 bot 自己）
+    if (event.source.type !== 'user') {
+      console.log('[⚠️] Skipped non-user message');
+      continue;
+    }
+
     if (
       event.type === 'message' &&
       event.message.type === 'text' &&
-      event.message.text.startsWith('/ping')
+      event.message.text === '/ping'
     ) {
-      try {
-        await axios.post(
-          'https://api.line.me/v2/bot/message/reply',
-          {
-            replyToken: event.replyToken,
-            messages: [
-              {
-                type: 'text',
-                text: 'pong 🏓',
-              },
-            ],
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
+      await axios.post(
+        'https://api.line.me/v2/bot/message/reply',
+        {
+          replyToken: event.replyToken,
+          messages: [
+            {
+              type: 'text',
+              text: 'pong 🏓',
             },
-          }
-        );
-        console.log('[✅] 回覆成功 /ping');
-      } catch (error) {
-        console.error('[❌] Error sending reply:', error.response?.data || error.message);
-      }
+          ],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
     }
   }
 

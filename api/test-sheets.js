@@ -24,8 +24,9 @@ export default async function handler(req, res) {
       await sheets.spreadsheets.values.append({
         auth: client,
         spreadsheetId,
-        range: '工作表1!A1',
+        range: '工作表1',
         valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
         requestBody: { values },
       });
       res.status(200).json({ status: 'write success', inserted: values.length });

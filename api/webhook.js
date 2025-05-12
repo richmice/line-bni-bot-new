@@ -1,51 +1,33 @@
-import axios from 'axios';
+import { google } from 'googleapis';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    console.warn('[！] Received non-POST request');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const events = req.body.events;
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  try {
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
-  if (!token) {
-    console.error('[！] Missing LINE access token');
-    return res.status(500).json({ error: 'Missing LINE access token' });
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const spreadsheetId = '1Zp4glUPoVUkyGkHNY0uVPu05UMxsurFXaiay9L8cFoI';
+    const range = '工作表1!A2';
+    const value = [['Hello from LINE Bot']];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: 'RAW',
+      requestBody: { values: value },
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('寫入失敗：', error);
+    return res.status(500).json({ error: 'Google Sheets Error' });
   }
-
-  for (const event of events) {
-    // ✅ 忽略不是 user 的來源（例如 group、room 或 bot 自己）
-    if (event.source.type !== 'user') {
-      console.log('[⚠️] Skipped non-user message');
-      continue;
-    }
-
-    if (
-      event.type === 'message' &&
-      event.message.type === 'text' &&
-      event.message.text === '/ping'
-    ) {
-      await axios.post(
-        'https://api.line.me/v2/bot/message/reply',
-        {
-          replyToken: event.replyToken,
-          messages: [
-            {
-              type: 'text',
-              text: 'pong 🏓',
-            },
-          ],
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-    }
-  }
-
-  res.status(200).end();
 }

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     if (event.type === 'message' && event.message.type === 'text') {
       const text = event.message.text.trim();
 
-      // 指令對應
+      // ✅ ping 指令
       if (text === '/ping') {
         await axios.post(
           'https://api.line.me/v2/bot/message/reply',
@@ -33,6 +33,7 @@ export default async function handler(req, res) {
         );
       }
 
+      // ✅ 出缺席通知（trigger API 寫入 Google Sheets）
       if (text === '/attendance' || text === '/出缺席通知') {
         await axios.post(
           'https://line-bni-bot-new.vercel.app/api/attendance',

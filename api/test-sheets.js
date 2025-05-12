@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       });
       res.status(200).json({ status: 'success', headers: response.data.values[0] });
     } else if (req.method === 'POST') {
-      const values = [['測試人員', '請假', '病假', '1', '2025-05-12', '感謝您協助通知 🙏', '', '', '']];
+      const values = [['測試人員', '請假', '病假', '1', '2025-05-12', '感謝您協助通知 🙏', '', '']];
       await sheets.spreadsheets.values.append({
         auth: client,
         spreadsheetId,

@@ -1,6 +1,7 @@
-const axios = require('axios');
+// webhook.js
+import axios from 'axios';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -13,9 +14,15 @@ module.exports = async function handler(req, res) {
   }
 
   for (const event of events) {
-    if (event.type === 'message' && event.message.type === 'text') {
+    // ✅ 僅處理來自「個人」訊息，避免群組內的 bot 迴圈
+    if (
+      event.type === 'message' &&
+      event.message.type === 'text' &&
+      event.source.type === 'user'
+    ) {
       const text = event.message.text.trim();
 
+      // 指令一：ping
       if (text === '/ping') {
         await axios.post(
           'https://api.line.me/v2/bot/message/reply',
@@ -32,6 +39,7 @@ module.exports = async function handler(req, res) {
         );
       }
 
+      // 指令二：出缺席通知
       if (text === '/attendance' || text === '/出缺席通知') {
         await axios.post(
           'https://line-bni-bot-new.vercel.app/api/attendance',
@@ -64,4 +72,4 @@ module.exports = async function handler(req, res) {
   }
 
   res.status(200).end();
-};
+}

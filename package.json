@@ -1,4 +1,12 @@
-"dependencies": {
-  "axios": "0.27.2",
-  "googleapis": "^105.0.0"
+{
+  "name": "line-bni-bot",
+  "version": "1.0.0",
+  "main": "api/webhook.js",
+  "scripts": {
+    "start": "node api/webhook.js"
+  },
+  "dependencies": {
+    "axios": "0.27.2",
+    "googleapis": "^105.0.0"
+  }
 }

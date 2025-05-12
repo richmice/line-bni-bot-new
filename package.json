@@ -1,6 +1,7 @@
 {
   "name": "line-bni-bot",
   "version": "1.0.0",
+  "type": "module",
   "main": "api/webhook.js",
   "scripts": {
     "start": "node api/webhook.js"

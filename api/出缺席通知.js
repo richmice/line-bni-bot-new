@@ -1,43 +1,50 @@
-import { google } from 'googleapis';
+import { google } from ‘googleapis’;
 
 export default async function handler(req, res) {
-  try {
-    const sheets = google.sheets('v4');
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const client = await auth.getClient();
-    const spreadsheetId = '1Zp4glUPoVUkyGkHNY0uVPu05UMxsurFXaiay9L8cFoI';
+try {
+const body = req.method === ‘POST’ ? req.body : null;
 
-    if (req.method === 'POST') {
-      const { data } = req.body;
+const sheets = google.sheets('v4');
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+const client = await auth.getClient();
+const spreadsheetId = '1Zp4glUPoVUkyGkHNY0uVPu05UMxsurFXaiay9L8cFoI';
 
-      // 驗證格式
-      if (!Array.isArray(data) || data.length < 5) {
-        return res.status(400).json({ status: 'error', message: 'Invalid data format' });
-      }
+if (req.method === 'POST') {
+  const data = body.data || [];
 
-      // 加上通知人（信箱）與通知時間
-      const notifiedBy = req.headers['x-forwarded-user-email'] || '系統自動';
-      const notifiedAt = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+  // 補上系統欄位
+  const notifiedBy = req.headers['x-forwarded-user'] || '系統';
+  const notifiedAt = new Date().toISOString();
 
-      const values = [[...data, notifiedBy, notifiedAt]];
+  const values = [[
+    data[0] || '',   // 姓名
+    data[1] || '',   // 狀態類型（病假/事假/遲到）
+    data[2] || '',   // 次數
+    data[3] || '',   // 日期
+    data[4] || '',   // 草稿訊息
+    '',              // ✅已通知（預留空白）
+    notifiedBy,      // 🙋誰通知
+    notifiedAt       // 🕐通知時間
+  ]];
 
-      await sheets.spreadsheets.values.append({
-        auth: client,
-        spreadsheetId,
-        range: '工作表1!A1',
-        valueInputOption: 'RAW',
-        requestBody: { values },
-      });
+  await sheets.spreadsheets.values.append({
+    auth: client,
+    spreadsheetId,
+    range: '工作表1!A1',
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
 
-      res.status(200).json({ status: 'success', inserted: values.length });
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
-    }
-  } catch (error) {
-    console.error('Google Sheets Error:', error);
-    res.status(500).json({ status: 'error', message: error.message });
-  }
+  res.status(200).json({ status: 'write success', inserted: values.length });
+} else {
+  res.status(405).json({ error: 'Method not allowed' });
+}
+
+} catch (error) {
+console.error(‘出缺席通知寫入錯誤:’, error);
+res.status(500).json({ status: ‘error’, message: error.message });
+}
 }

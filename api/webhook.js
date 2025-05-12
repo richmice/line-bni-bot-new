@@ -1,4 +1,3 @@
-// webhook.js
 import axios from 'axios';
 
 export default async function handler(req, res) {
@@ -9,26 +8,24 @@ export default async function handler(req, res) {
   const events = req.body.events;
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
-  if (!token) {
-    return res.status(500).json({ error: 'Missing LINE access token' });
-  }
-
   for (const event of events) {
-    // ✅ 僅處理來自「個人」訊息，避免群組內的 bot 迴圈
+    // 👉 避免 bot 回應自己的訊息（避免死循環）
+    if (event.source?.userId === 'Udeadbeefdeadbeefdeadbeefdeadbeef') continue;
+
     if (
       event.type === 'message' &&
-      event.message.type === 'text' &&
-      event.source.type === 'user'
+      event.message.type === 'text'
     ) {
       const text = event.message.text.trim();
 
-      // 指令一：ping
-      if (text === '/ping') {
+      // ✅ 指令觸發
+      if (text === '/出缺席通知') {
+        // 1. 發送通知訊息
         await axios.post(
           'https://api.line.me/v2/bot/message/reply',
           {
             replyToken: event.replyToken,
-            messages: [{ type: 'text', text: 'pong 🏓' }],
+            messages: [{ type: 'text', text: '✅ 已觸發出缺席通知流程' }],
           },
           {
             headers: {
@@ -37,34 +34,12 @@ export default async function handler(req, res) {
             },
           }
         );
-      }
 
-      // 指令二：出缺席通知
-      if (text === '/attendance' || text === '/出缺席通知') {
+        // 2. 寫入 Google Sheet（你原本的流程）
         await axios.post(
           'https://line-bni-bot-new.vercel.app/api/attendance',
           {
             data: ['測試', '病假', '1', '2025-05-12', '敬請確認', '', '', ''],
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        await axios.post(
-          'https://api.line.me/v2/bot/message/reply',
-          {
-            replyToken: event.replyToken,
-            messages: [{ type: 'text', text: '✅ 已觸發出缺席通知流程（/attendance）' }],
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
           }
         );
       }

@@ -2,6 +2,8 @@ import { google } from 'googleapis';
 
 export default async function handler(req, res) {
   try {
+    const body = req.method === 'POST' ? req.body : null;
+
     const sheets = google.sheets('v4');
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
@@ -14,29 +16,27 @@ export default async function handler(req, res) {
       const response = await sheets.spreadsheets.values.get({
         auth: client,
         spreadsheetId,
-        range: '工作表1!A1:H1',
+        range: '工作表1!A1:I1', // A~I 欄
       });
-      return res.status(200).json({ status: 'success', headers: response.data.values[0] });
-    }
+      res.status(200).json({ status: 'success', headers: response.data.values[0] });
+    } else if (req.method === 'POST') {
+      // 測試資料：對應 A~I 欄
+      const values = [
+        ["阿強", "病假", "1", "2025/05/13", "補充說明", "", "", "", ""]
+      ];
 
-    if (req.method === 'POST') {
-      const { data } = req.body;
-      if (!Array.isArray(data)) {
-        return res.status(400).json({ status: 'error', message: 'Invalid data format' });
-      }
-
-      const response = await sheets.spreadsheets.values.append({
+      await sheets.spreadsheets.values.append({
         auth: client,
         spreadsheetId,
         range: '工作表1!A1',
         valueInputOption: 'RAW',
-        requestBody: { values: [data] },
+        requestBody: { values },
       });
 
-      return res.status(200).json({ status: 'write success', result: response.data });
+      res.status(200).json({ status: 'write success', inserted: values.length });
+    } else {
+      res.status(405).json({ error: 'Method not allowed' });
     }
-
-    res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Google Sheets error:', error);
     res.status(500).json({ status: 'error', message: error.message });

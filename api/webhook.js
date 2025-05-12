@@ -1,5 +1,4 @@
-// trigger redeploy
-
+// webhook.js
 import axios from 'axios';
 
 export default async function handler(req, res) {
@@ -18,6 +17,7 @@ export default async function handler(req, res) {
     if (event.type === 'message' && event.message.type === 'text') {
       const text = event.message.text.trim();
 
+      // 簡單指令測試
       if (text === '/ping') {
         await axios.post(
           'https://api.line.me/v2/bot/message/reply',
@@ -34,10 +34,13 @@ export default async function handler(req, res) {
         );
       }
 
+      // 出缺席通知測試指令
       if (text === '/attendance' || text === '/出缺席通知') {
         await axios.post(
           'https://line-bni-bot-new.vercel.app/api/attendance',
-          { data: ['測試', '病假', '1', '2025-05-12', '敬請確認', '', '', ''] },
+          {
+            data: ['測試', '病假', '1', '2025-05-12', '敬請確認', '', '', ''],
+          },
           {
             headers: {
               'Content-Type': 'application/json',
